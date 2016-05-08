@@ -88,8 +88,10 @@ int producer(){
 int consumer(){
     int take = ((double)rand() / (double) RAND_MAX) * 20;
     pthread_mutex_lock(&mutex_2);
+
+        printf("DEBUG PRODUCER COUNT: %d\n", p_count);
         printf("TOTAL PRODUCT: %d\n", product);
-            if(c_count <= 1){//attempt to eliminate deadlocking issue
+            if(p_count <= 1){//attempt to eliminate deadlocking issue
                 while((take = ((double)rand() / (double) RAND_MAX) * 20) > product){}
                 pthread_mutex_unlock(&mutex);
             }
