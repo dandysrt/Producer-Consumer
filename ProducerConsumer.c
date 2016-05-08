@@ -9,22 +9,22 @@
 #define DEFAULT 5
 #define ITR_COUNT 2
 
-//global variables
+// global variables
 int product = 0;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t mutex_2 = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t c_mutex = PTHREAD_MUTEX_INITIALIZER;
 int need = 0;
-int p_count = 1, c_count = DEFAULT;
+int producers, consumers;
 
-//prototypes:
+// prototypes:
 int producer();
 int consumer();
 
 
 int main(int argc, char *argv[]){
     srand(time(NULL));
-
+    int p_count = 1, c_count = DEFAULT;
     int arg;
     if(argc > 1){
         while((arg = getopt(argc, argv, "p:c:")) != -1){
@@ -42,6 +42,8 @@ int main(int argc, char *argv[]){
             }
         }
     }
+    producers = p_count;
+    consumers = c_count;
     pthread_mutex_lock(&c_mutex);
     printf("Producer(s): %d\n", p_count);
     printf("Consumer(s): %d\n", c_count);
@@ -75,6 +77,7 @@ int main(int argc, char *argv[]){
 int producer(){
     int produce = 1 + ((double)rand() / (double) RAND_MAX) * 20;
     pthread_mutex_lock(&mutex);
+        producers--;
         product += produce;
         printf("Producer has stocked %d product.\n", produce);
         if(need > 0 && product > need){
@@ -82,23 +85,25 @@ int producer(){
         }else{
             pthread_mutex_unlock(&mutex);
         }
-    return p_count--;
+    return 0;
 }
 
 int consumer(){
     int take = ((double)rand() / (double) RAND_MAX) * 20;
     pthread_mutex_lock(&mutex_2);
-
-        printf("DEBUG PRODUCER COUNT: %d\n", p_count);
+        printf("DEBUG CONSUMER COUNT: %d\n", consumers);
+        printf("DEBUG PRODUCER COUNT: %d\n", producers);
         printf("TOTAL PRODUCT: %d\n", product);
-            if(p_count <= 1){//attempt to eliminate deadlocking issue
-                while((take = ((double)rand() / (double) RAND_MAX) * 20) > product){}
+            if(producers <= 1){// attempt to eliminate deadlocking issue
+                // wait and adjust consumption until it falls within tolerances
+                while((take = ((double)rand() / (double) RAND_MAX) * 20) > product);
                 pthread_mutex_unlock(&mutex);
             }
         pthread_mutex_lock(&mutex);
             if(product >= take){
                 product -= take;
                 printf("Consumer has removed %d product.\n", take);
+                consumers--;
                 pthread_mutex_unlock(&mutex);
                 pthread_mutex_unlock(&mutex_2);
             }else{
@@ -108,9 +113,10 @@ int consumer(){
                     product -= take;
                     need = 0;
                     printf("Consumer has removed %d product.\n", take);
+                    consumers--;
                 pthread_mutex_unlock(&mutex);
                 pthread_mutex_unlock(&mutex_2);
             }
-    return c_count--;
+    return 0;
 }
 
