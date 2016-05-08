@@ -9,15 +9,15 @@
 #define DEFAULT 5
 #define ITR_COUNT 2
 
-//global variables
+// global variables
 int product = 0;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t mutex_2 = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t c_mutex = PTHREAD_MUTEX_INITIALIZER;
-int count = 0;
 int need = 0;
+int producers, consumers;
 
-//prototypes:
+// prototypes:
 int producer();
 int consumer();
 
@@ -42,6 +42,8 @@ int main(int argc, char *argv[]){
             }
         }
     }
+    producers = p_count;
+    consumers = c_count;
     pthread_mutex_lock(&c_mutex);
     printf("Producer(s): %d\n", p_count);
     printf("Consumer(s): %d\n", c_count);
@@ -65,12 +67,17 @@ int main(int argc, char *argv[]){
     for(int j = 0; j < c_count; j++){
         pthread_join(ctID[j], NULL);
     }
+
+    pthread_mutex_destroy(&mutex);
+    pthread_mutex_destroy(&mutex_2);
+    pthread_mutex_destroy(&c_mutex);
     return 0;
 }
 
 int producer(){
     int produce = 1 + ((double)rand() / (double) RAND_MAX) * 20;
     pthread_mutex_lock(&mutex);
+        producers--;
         product += produce;
         printf("Producer has stocked %d product.\n", produce);
         if(need > 0 && product > need){
@@ -84,11 +91,19 @@ int producer(){
 int consumer(){
     int take = ((double)rand() / (double) RAND_MAX) * 20;
     pthread_mutex_lock(&mutex_2);
+        printf("DEBUG CONSUMER COUNT: %d\n", consumers);
+        printf("DEBUG PRODUCER COUNT: %d\n", producers);
         printf("TOTAL PRODUCT: %d\n", product);
+            if(producers <= 1){// attempt to eliminate deadlocking issue
+                // wait and adjust consumption until it falls within tolerances
+                while((take = ((double)rand() / (double) RAND_MAX) * 20) > product);
+                pthread_mutex_unlock(&mutex);
+            }
         pthread_mutex_lock(&mutex);
             if(product >= take){
                 product -= take;
                 printf("Consumer has removed %d product.\n", take);
+                consumers--;
                 pthread_mutex_unlock(&mutex);
                 pthread_mutex_unlock(&mutex_2);
             }else{
@@ -98,6 +113,7 @@ int consumer(){
                     product -= take;
                     need = 0;
                     printf("Consumer has removed %d product.\n", take);
+                    consumers--;
                 pthread_mutex_unlock(&mutex);
                 pthread_mutex_unlock(&mutex_2);
             }
