@@ -94,8 +94,9 @@ int consumer(){
         printf("DEBUG CONSUMER COUNT: %d\n", consumers);
         printf("DEBUG PRODUCER COUNT: %d\n", producers);
         printf("TOTAL PRODUCT: %d\n", product);
-            if(producers <= 1){// attempt to eliminate deadlocking issue
+            if(producers == 0){// attempt to eliminate deadlocking issue
                 // wait and adjust consumption until it falls within tolerances
+                producers--;
                 while((take = ((double)rand() / (double) RAND_MAX) * 20) > product);
                 pthread_mutex_unlock(&mutex);
             }
